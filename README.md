@@ -63,6 +63,41 @@ Each component is lightweight, isolated, and communicates over local REST APIs.
      Ollama (Llama-3)              Arch News RSS
 ```
 
+ ## Components
+### The Brain (Python)
+
+Framework: FastAPI
+
+LLM Backend: Ollama (Llama-3-8B)
+
+Responsibilities:
+
+- Explain logs and errors
+
+- Generate safe terminal commands
+
+- Interface with the TUI
+
+- Run local system inspections via subprocess
+
+### The Orchestrator (Java)
+
+Framework: Quarkus (preferred) or Spring Boot
+
+Responsibilities:
+
+- Scrape Arch Linux News RSS
+
+- Detect breaking update advisories
+
+- Maintain local database:
+
+-- Command history
+
+-- Ignored warnings
+
+- Schedule periodic audits
+
 ## License
 
 GNU GPL v3
