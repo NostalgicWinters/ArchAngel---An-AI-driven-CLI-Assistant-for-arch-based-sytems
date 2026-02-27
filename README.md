@@ -63,3 +63,21 @@ Each component is lightweight, isolated, and communicates over local REST APIs.
      Ollama (Llama-3)              Arch News RSS
 ```
 
+## License
+
+GNU GPL v3
+
+This project is free software.
+You are free to use, study, modify, and distribute it—under the same license.
+
+## Contributing
+
+Contributions are welcome:
+
+- Bug reports
+
+- Performance improvements
+
+- New agents (pacman hooks, GPU monitors, etc.)
+
+Please open an issue or PR.
