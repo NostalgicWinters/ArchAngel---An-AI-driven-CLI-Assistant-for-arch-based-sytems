@@ -98,6 +98,30 @@ Responsibilities:
 
 - Schedule periodic audits
 
+### The Interface (Python)
+
+Framework: Textual
+
+Responsibilities:
+
+- Display system health
+
+- Show alerts and explanations
+
+- Provide interactive terminal assistance
+
+### Privacy & Security
+
+- 100% local inference
+
+- No telemetry
+
+- No cloud APIs
+
+- No data leaves the machine
+
+- Runs as a system daemon
+
 ## License
 
 GNU GPL v3
