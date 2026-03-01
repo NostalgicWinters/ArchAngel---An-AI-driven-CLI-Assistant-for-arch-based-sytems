@@ -2,6 +2,7 @@ package org.archangel.rss;
 
 import jakarta.enterprise.context.ApplicationScoped;
 import org.archangel.model.NewsItem;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
@@ -19,7 +20,10 @@ import java.util.List;
 
 @ApplicationScoped
 public class ArchNewsFetcher {
-    private static final String ARCH_RSS_URL = "https://archlinux.org/feeds/news/";
+
+    @ConfigProperty(name = "archangel.rss.url")
+    String ARCH_RSS_URL;
+
     public List<NewsItem> fetchRSSNews() throws Exception {
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder(URI.create(ARCH_RSS_URL)).GET().build();

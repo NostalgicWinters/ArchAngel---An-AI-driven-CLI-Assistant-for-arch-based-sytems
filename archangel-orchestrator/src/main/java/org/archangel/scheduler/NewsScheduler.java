@@ -5,10 +5,14 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.archangel.rss.ArchNewsFetcher;
 import org.archangel.state.NewsCacheService;
+import org.jboss.logging.Logger;
 
 @ApplicationScoped
 public class NewsScheduler
 {
+
+    private static final Logger log = Logger.getLogger(NewsScheduler.class);
+
     @Inject
     ArchNewsFetcher  archNewsFetcher;
 
@@ -20,11 +24,13 @@ public class NewsScheduler
     {
         try {
             var news = archNewsFetcher.fetchRSSNews();
-            newsCacheService.updateNews(news);
-            System.out.println("News cache refreshed.");
+            if (news != null && !news.isEmpty()) {
+                newsCacheService.updateNews(news);
+                log.info("News cache refreshed");
+            }
         }
         catch (Exception e) {
-            System.err.println("Failed to refresh news: " + e.getMessage());
+            log.error("Failed to refresh news: " + e.getMessage());
         }
     }
 }
