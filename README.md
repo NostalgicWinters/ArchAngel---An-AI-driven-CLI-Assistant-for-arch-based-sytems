@@ -82,7 +82,7 @@ Responsibilities:
 
 ### The Orchestrator (Java)
 
-Framework: Quarkus (preferred) or Spring Boot
+Framework: Quarkus
 
 Responsibilities:
 
