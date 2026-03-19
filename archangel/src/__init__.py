@@ -1,6 +1,8 @@
 import typer
 import httpx
 from ollama import chat
+import questionary
+import os
 
 app = typer.Typer()
 
@@ -236,6 +238,29 @@ Logs:
             err=True,
         )
         raise typer.Exit(code=1)
+
+@app.command()
+def config_scan():
+    '''
+        Scans your config files for any problems.
+    '''
+    env = questionary.select(
+        "Which desktop environment do you use?",
+        choices=[
+            "KDE",
+            "Hyprland",
+            "GNOME",
+            "Other"
+        ]
+    ).ask()
+
+    typer.echo(f"You selected: {env}")
+
+    if env == "Hyprland":
+
+        for root, dirs, files in os.walk(os.path.expanduser("~/.config/hypr")):
+            for file in files:
+                print(os.path.join(root, file))
 
 if __name__ == "__main__":
     app()
