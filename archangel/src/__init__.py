@@ -111,6 +111,9 @@ def exec():
         
 @app.command()
 def get_status():
+    '''
+        Get status of your System.
+    '''
     try:
         with httpx.Client() as client:
             r = client.get(f"{JAVA_SYSTEM_URL}/status")
@@ -131,6 +134,34 @@ def get_status():
         )
         raise typer.Exit(code=1)
 
+    except httpx.HTTPStatusError as e:
+        typer.echo(
+            typer.style(f"Error: Service returned {e.response.status_code}", fg=typer.colors.RED),
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+@app.command()
+def get_incidents():
+    try:
+        with httpx.Client() as client:
+            r = client.get(f"{JAVA_SYSTEM_URL}/incidents")
+            r.raise_for_status()
+            typer.echo(f"Status: {r.status_code}")
+            incidents = r.json()
+
+        if not incidents:
+            typer.echo("Couldn't find any incidents.")
+            raise typer.Exit()
+
+        typer.echo(f"{incidents}")
+
+    except httpx.ConnectError:
+        typer.echo(
+            typer.style("Error: Could not connect to ArchAngel service. Is it running?", fg=typer.colors.RED),
+            err=True,
+        )
+        raise typer.Exit(code=1)
     except httpx.HTTPStatusError as e:
         typer.echo(
             typer.style(f"Error: Service returned {e.response.status_code}", fg=typer.colors.RED),
