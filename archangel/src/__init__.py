@@ -4,7 +4,7 @@ import httpx
 app = typer.Typer()
 
 JAVA_RSS_URL = "http://127.0.0.1:9090/news"
-JAVA_SYSTEM_URL = "http://127.0.0.1:9090/system/execute"
+JAVA_SYSTEM_URL = "http://127.0.0.1:9090/system"
 
 @app.callback()
 def callback():
@@ -81,13 +81,13 @@ def archnews():
 
 
 @app.command()
-def systeminfo():
+def exec():
     '''Fetches info about your system'''
     try:
         typer.echo("Fetching data...")
         with httpx.Client(timeout=10) as client:
             r = client.post(
-                JAVA_SYSTEM_URL,
+                f"{JAVA_SYSTEM_URL}/execute",
                 content="uname -a",                        
                 headers={"Content-Type": "text/plain"}
             )
@@ -109,6 +109,35 @@ def systeminfo():
         typer.echo(typer.style("Error: Could not connect to ArchAngel service. Is it running?", fg=typer.colors.RED), err=True)
         raise typer.Exit(code=1)
         
+@app.command()
+def get_status():
+    try:
+        with httpx.Client() as client:
+            r = client.get(f"{JAVA_SYSTEM_URL}/status")
+            typer.echo(f"Status: {r.status_code}")
+            r.raise_for_status()
+            system_info = r.json()
+
+        if not system_info:
+            typer.echo("No information can be found.")
+            raise typer.Exit()
+
+        typer.echo(system_info)
+
+    except httpx.ConnectError:
+        typer.echo(
+            typer.style("Error: Could not connect to ArchAngel service. Is it running?", fg=typer.colors.RED),
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    except httpx.HTTPStatusError as e:
+        typer.echo(
+            typer.style(f"Error: Service returned {e.response.status_code}", fg=typer.colors.RED),
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
 
 if __name__ == "__main__":
     app()
