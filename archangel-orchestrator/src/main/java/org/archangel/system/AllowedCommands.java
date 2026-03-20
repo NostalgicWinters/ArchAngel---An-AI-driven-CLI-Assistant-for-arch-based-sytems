@@ -10,7 +10,8 @@ public class AllowedCommands
             "df -h",
             "uptime",
             "whoami",
-            "hostname"
+            "hostname",
+            "journalctl -n 50"
     );
     public static boolean isAllowed(String Command)
     {
