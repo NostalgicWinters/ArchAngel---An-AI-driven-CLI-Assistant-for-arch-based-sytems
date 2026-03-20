@@ -3,11 +3,15 @@ import httpx
 from ollama import chat
 import questionary
 import os
+import threading
+import itertools
+import time
 
 app = typer.Typer()
 
 JAVA_RSS_URL = "http://127.0.0.1:9090/news"
 JAVA_SYSTEM_URL = "http://127.0.0.1:9090/system"
+model = "qwen3.5:9b"
 
 @app.callback()
 def callback():
@@ -175,15 +179,37 @@ def get_incidents():
         )
         raise typer.Exit(code=1)
 
-def chat_with_ollama(prompt: str, model="qwen3.5:9b"):
+def thinking_spinner(stop_event):
+    for dots in itertools.cycle([".", "..", "..."]):
+        if stop_event.is_set():
+            break
+        print(f"\rThinking{dots}   ", end="", flush=True)
+        time.sleep(0.4)
+    print("\r" + " " * 20 + "\r", end="", flush=True)
+
+def chat_with_ollama(prompt: str, model=model) -> str:
+    stop_event = threading.Event()
+    spinner = threading.Thread(target=thinking_spinner, args=(stop_event,))
+    spinner.start()
+
     stream = chat(
         model=model,
         messages=[{"role": "user", "content": prompt}],
         stream=True
     )
+    full_response = ""
     for chunk in stream:
-        print(chunk['message']['content'], end="", flush=True)
+        full_response += chunk['message']['content']
+
+    stop_event.set()
+    spinner.join()
+
+    for char in full_response:
+        print(char, end="", flush=True)
+        time.sleep(0.01)
     print()
+
+    return full_response
 
 @app.command()
 def summary():
@@ -246,25 +272,36 @@ def config_scan():
         Scans your config files for any problems.
     '''
     env = questionary.select(
-        "Which desktop environment do you use?",
+        "Do you use Hyprland?",
         choices=[
-            "KDE",
-            "Hyprland",
-            "GNOME",
-            "Other"
+            "Yes",
+            "No"
         ]
     ).ask()
 
     typer.echo(f"You selected: {env}")
 
-    if env == "Hyprland":
-
+    if env == "Yes":
+        prompt = ""
+        content = ""
+        typer.echo(f"Okay please wait while {model} processes your config. This may take a while....")
         for root, dirs, files in os.walk(os.path.expanduser("~/.config/hypr")):
             for file in files:
                 with open(os.path.join(root, file),"r") as f:
                     content = f.read()
-                    print(content)
-                print(os.path.join(root, file))
+                    prompt = f'''
+You are a linux assistant, check these hyprland config file for the user and let them know if anything breaks the system. Return
+- The line which is broken or may break in certain conditions (If any)
+- Recommended action
+- If no such line exists then return "no such problems" as fast as you can
+The config file is {file} and it's content is as follows:-
+{content}
+'''
+                    typer.echo( 
+                    typer.style(f"\n===For {file} ===\n", fg=typer.colors.CYAN , bold= True)
+                    )
+                    ai_response = chat_with_ollama(prompt)
+                    typer.echo(ai_response)
 
 if __name__ == "__main__":
     app()
