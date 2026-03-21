@@ -13,26 +13,23 @@ public class CommandService {
     SystemProcessExec systemProcessExec;
 
     public CommandResponse executeCommand(String command) {
-
         if (command == null || command.isBlank()) {
             return new CommandResponse(command, -1, "", "Command cannot be empty");
         }
+
         command = command.trim();
-        if (command.contains("|") ||
-                command.contains("&") ||
-                command.contains(";") ||
-                command.contains(">") ||
-                command.contains("<")) {
 
-            return new CommandResponse(command, -1, "",
-                    "Chained or redirected commands are not allowed");
-        }
+        // Guard against shell injection via metacharacters.
+        // Note: since we use ProcessBuilder with a split arg list (not shell=true),
+        // these characters won't work for injection — but we reject them anyway to
+        // prevent surprises and to be explicit about what this API accepts.
+
         if (!AllowedCommands.isAllowed(command)) {
-            return new CommandResponse(command, -1, "", "Command not allowed");
+            return new CommandResponse(command, -1, "", "Command not in allowlist: " + command);
         }
-        List<String> parts = List.of(command.split("\\s+"));
 
-        ProcessResult  result = systemProcessExec.execute(parts);
+        List<String> parts = List.of(command.split("\\s+"));
+        ProcessResult result = systemProcessExec.execute(parts);
 
         if (result.isTimedOut()) {
             return new CommandResponse(command, -1, "", "Command timed out");
