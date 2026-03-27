@@ -12,7 +12,7 @@ app = typer.Typer()
 JAVA_RSS_URL = "http://127.0.0.1:9090/news"
 JAVA_SYSTEM_URL = "http://127.0.0.1:9090/system"
 model = "qwen3.5:9b"
-API_KEY = "dev-secret-key"
+API_KEY = os.getenv("ARCHANGEL_API_KEY", "dev-secret-key")
 
 @app.callback()
 def callback():
@@ -27,14 +27,6 @@ def locate_conf():
     This command scans your system files to find your config files
     """
     typer.echo("Locating config files")
-
-
-@app.command()
-def scan_conf():
-    """
-    Scans your config files to see for any vulnerabilities
-    """
-    typer.echo("Checking any vulnerabilities")
 
 @app.command()
 def scan_conf():
