@@ -1,0 +1,10 @@
+README.md
+pyproject.toml
+src/archangel/__init__.py
+src/archangel/cli.py
+src/archangel_cli.egg-info/PKG-INFO
+src/archangel_cli.egg-info/SOURCES.txt
+src/archangel_cli.egg-info/dependency_links.txt
+src/archangel_cli.egg-info/entry_points.txt
+src/archangel_cli.egg-info/requires.txt
+src/archangel_cli.egg-info/top_level.txt

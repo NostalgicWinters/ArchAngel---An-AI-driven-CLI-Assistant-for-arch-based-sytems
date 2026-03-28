@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: archangel-cli
+Version: 0.1.0
+Summary: AI-driven CLI assistant for Arch-based Linux systems
+Author: ArchAngel Team
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+Requires-Dist: typer[all]
+Requires-Dist: httpx
+Requires-Dist: ollama
+Requires-Dist: questionary

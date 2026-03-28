@@ -1,0 +1,4 @@
+typer[all]
+httpx
+ollama
+questionary

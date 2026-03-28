@@ -7,26 +7,31 @@ import threading
 import itertools
 import time
 
-app = typer.Typer()
+app = typer.Typer(
+    help="ArchAngel — AI-powered system assistant for Arch Linux",
+    add_completion=True,
+    no_args_is_help=True
+)
 
 JAVA_RSS_URL = "http://127.0.0.1:9090/news"
 JAVA_SYSTEM_URL = "http://127.0.0.1:9090/system"
 model = "qwen3.5:9b"
 API_KEY = os.getenv("ARCHANGEL_API_KEY", "dev-secret-key")
+__version__ = "0.1.0"
 
 @app.callback()
-def callback():
+def main(
+    verbose: bool = typer.Option(False, "--verbose", "-v"),
+    json_output: bool = typer.Option(False, "--json"),
+):
     """
-    This is ArchAngel
+    ArchAngel CLI
     """
-
 
 @app.command()
-def locate_conf():
-    """
-    This command scans your system files to find your config files
-    """
-    typer.echo("Locating config files")
+def version():
+    typer.echo(f"ArchAngel v{__version__}")
+
 
 @app.command()
 def scan_conf():
@@ -381,6 +386,31 @@ def config_scan():
         typer.echo(
             typer.style("\n✔ No config issues found across all Hyprland files.", fg=typer.colors.GREEN)
         )
+
+@app.command()
+def doctor():
+    """
+    Diagnose system + ArchAngel setup
+    """
+    checks = []
+
+    # Check Java service
+    try:
+        httpx.get("http://127.0.0.1:9090/system/status", timeout=2)
+        checks.append(("Java service", "OK"))
+    except:
+        checks.append(("Java service", "FAIL"))
+
+    # Check Ollama
+    try:
+        chat(model="qwen3.5:9b", messages=[{"role": "user", "content": "ping"}])
+        checks.append(("Ollama", "OK"))
+    except:
+        checks.append(("Ollama", "FAIL"))
+
+    for name, status in checks:
+        color = typer.colors.GREEN if status == "OK" else typer.colors.RED
+        typer.echo(typer.style(f"{name}: {status}", fg=color))
 
 if __name__ == "__main__":
     app()
