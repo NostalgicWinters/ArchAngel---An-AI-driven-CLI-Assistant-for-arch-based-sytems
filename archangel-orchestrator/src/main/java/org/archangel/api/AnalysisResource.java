@@ -1,5 +1,6 @@
 package org.archangel.api;
 
+import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
@@ -8,26 +9,14 @@ import org.archangel.system.LogDecisionService;
 import org.archangel.system.SystemLogService;
 import org.archangel.think.GeneratedResponse;
 import org.archangel.think.LogicAnalyzeExceptionHandler;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
-/**
- * NEW ENDPOINT: Exposes on-demand log analysis to the CLI.
- *
- * Previously the Java orchestrator had AI analysis wired up internally
- * (LogicAnalyzeExceptionHandler) but never exposed it via any HTTP endpoint.
- * The CLI worked around this by calling Ollama directly — an architectural violation
- * that required every user to have Ollama installed locally.
- *
- * This resource:
- * 1. Triggers log collection via SystemLogService (journalctl)
- * 2. Passes logs to the Python brain service via LogicAnalyzeExceptionHandler
- * 3. Returns structured GeneratedResponse to the CLI
- *
- * The CLI summary() command should call POST /analysis/logs instead of
- * running Ollama directly.
- */
+import java.util.Map;
+
 @Path("/analysis")
 @Produces(MediaType.APPLICATION_JSON)
+@ApplicationScoped
 public class AnalysisResource {
 
     private static final Logger log = Logger.getLogger(AnalysisResource.class);
@@ -41,16 +30,24 @@ public class AnalysisResource {
     @Inject
     LogicAnalyzeExceptionHandler analyzeHandler;
 
-    /**
-     * Trigger log analysis on demand.
-     * Collects recent journalctl output and sends it to the AI brain service.
-     */
+    @ConfigProperty(name = "archangel.api.key")
+    String expectedApiKey;
+
+    private Response unauthorized() {
+        return Response.status(Response.Status.UNAUTHORIZED)
+                .entity(Map.of("error", "Missing or invalid X-Api-Key header"))
+                .build();
+    }
+
+    private boolean isAuthorized(String apiKey) {
+        return expectedApiKey != null && expectedApiKey.equals(apiKey);
+    }
     @POST
     @Path("/logs")
-    public Response analyzeLogs() {
+    public Response analyzeLogs(@HeaderParam("X-Api-Key") String apiKey) {
+        if (!isAuthorized(apiKey)) return unauthorized();
 
         String logs = systemLogService.fetchRecentLogs();
-
         if (logs == null) {
             return Response.ok(
                     new GeneratedResponse(
@@ -74,18 +71,18 @@ public class AnalysisResource {
         GeneratedResponse result = analyzeHandler.analyzeLogs(logs);
         return Response.ok(result).build();
     }
-
-    /**
-     * Analyze custom log text submitted by the caller.
-     * Useful for the CLI's config_scan or targeted analysis.
-     */
     @POST
     @Path("/custom")
     @Consumes(MediaType.TEXT_PLAIN)
-    public Response analyzeCustom(String logText) {
+    public Response analyzeCustom(
+            @HeaderParam("X-Api-Key") String apiKey,
+            String logText) {
+
+        if (!isAuthorized(apiKey)) return unauthorized();
+
         if (logText == null || logText.isBlank()) {
             return Response.status(400)
-                    .entity("{\"error\": \"Log text cannot be empty\"}")
+                    .entity(Map.of("error", "Log text cannot be empty"))
                     .build();
         }
 

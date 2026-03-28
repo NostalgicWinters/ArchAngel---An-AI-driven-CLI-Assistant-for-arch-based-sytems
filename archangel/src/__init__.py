@@ -1,374 +1,153 @@
 import typer
 import httpx
-from ollama import chat
 import questionary
 import os
-import threading
-import itertools
-import time
 
 app = typer.Typer()
 
 JAVA_RSS_URL = "http://127.0.0.1:9090/news"
 JAVA_SYSTEM_URL = "http://127.0.0.1:9090/system"
-model = "qwen3.5:9b"
+JAVA_ANALYSIS_URL = "http://127.0.0.1:9090/analysis"
+
 API_KEY = os.getenv("ARCHANGEL_API_KEY", "dev-secret-key")
+
 
 @app.callback()
 def callback():
     """
-    This is ArchAngel
+    ArchAngel — Arch Linux system assistant.
+    CLI → Java → Python brain (Groq)
     """
 
 
-@app.command()
-def locate_conf():
-    """
-    This command scans your system files to find your config files
-    """
-    typer.echo("Locating config files")
+# ── Helpers ─────────────────────────────────────────────────────
 
-@app.command()
-def scan_conf():
-    """
-    Scans your config files to see for any vulnerabilities
-    """
-    typer.echo("Checking any vulnerabilities")
+def _auth_headers() -> dict:
+    return {"X-Api-Key": API_KEY}
 
-@app.command()
-def archnews():
-    """
-    Fetches and displays the latest Arch news from the ArchAngel service
-    """
-    try:
-        typer.echo("Fetching news...")
-        with httpx.Client(timeout=10) as client:
-            r = client.get(JAVA_RSS_URL)
-            typer.echo(f"Status: {r.status_code}")
-            r.raise_for_status()
-            news_items = r.json()
 
-        if not news_items:
-            typer.echo("No news items found.")
-            raise typer.Exit()
+def _severity_color(severity: str) -> str:
+    return {
+        "CRITICAL": typer.colors.RED,
+        "HIGH": typer.colors.BRIGHT_RED,
+        "MEDIUM": typer.colors.YELLOW,
+        "LOW": typer.colors.GREEN,
+    }.get(severity.upper(), typer.colors.WHITE)
 
-        typer.echo(typer.style("\n=== Arch News ===\n", fg=typer.colors.CYAN, bold=True))
 
-        for item in news_items:
-            title = item.get("title", "No title")
-            link  = item.get("link", "")
-            date  = item.get("date", "")
+def _print_analysis(analysis: dict) -> None:
+    severity = analysis.get("severity", "UNKNOWN")
+    summary = analysis.get("summary", "")
+    action = analysis.get("recommendedAction", "")
+    valid = analysis.get("analysisValid", False)
 
-            typer.echo(typer.style(f"• {title}", fg=typer.colors.GREEN, bold=True))
-            if date:
-                typer.echo(f"  Date: {date}")
-            if link:
-                typer.echo(f"  Link: {link}")
-            typer.echo()
-
-    except httpx.ConnectError:
+    if not valid:
         typer.echo(
-            typer.style("Error: Could not connect to ArchAngel service. Is it running?", fg=typer.colors.RED),
-            err=True,
-        )
-        raise typer.Exit(code=1)
-    except httpx.HTTPStatusError as e:
-        typer.echo(
-            typer.style(f"Error: Service returned {e.response.status_code}", fg=typer.colors.RED),
-            err=True,
-        )
-        raise typer.Exit(code=1)
-
-
-@app.command()
-def exec():
-    '''Fetches info about your system'''
-    try:
-        typer.echo("Fetching data...")
-        with httpx.Client(timeout=10) as client:
-            r = client.post(
-                f"{JAVA_SYSTEM_URL}/execute",
-                content="uname -a",                        
-                headers={"Content-Type": "text/plain", "X-Api-Key": API_KEY}
+            typer.style(
+                "⚠  AI analysis unavailable — brain service is down.\n"
+                "   Run: systemctl status archangel-brain",
+                fg=typer.colors.YELLOW,
             )
-            r.raise_for_status()
-            response = r.json()                            
-
-        exit_code = response.get("exitCode")
-        stdout    = response.get("stdout", "")
-        stderr    = response.get("stderr", "")
-
-        if exit_code != 0:
-            typer.echo(typer.style(f"Error: {stderr}", fg=typer.colors.RED), err=True)
-            raise typer.Exit(code=1)
-
-        typer.echo(typer.style("\n=== System Info ===\n", fg=typer.colors.CYAN, bold=True))
-        typer.echo(stdout)
-
-    except httpx.ConnectError:
-        typer.echo(typer.style("Error: Could not connect to ArchAngel service. Is it running?", fg=typer.colors.RED), err=True)
-        raise typer.Exit(code=1)
-        
-@app.command()
-def get_status():
-    '''
-        Get status of your System.
-    '''
-    try:
-        with httpx.Client() as client:
-            r = client.get(f"{JAVA_SYSTEM_URL}/status",
-            headers={"X-Api-Key": API_KEY}
-            )
-            typer.echo(f"Status: {r.status_code}")
-            r.raise_for_status()
-            system_info = r.json()
-
-        if not system_info:
-            typer.echo("No information can be found.")
-            raise typer.Exit()
-
-        typer.echo(system_info)
-
-    except httpx.ConnectError:
-        typer.echo(
-            typer.style("Error: Could not connect to ArchAngel service. Is it running?", fg=typer.colors.RED),
-            err=True,
         )
-        raise typer.Exit(code=1)
 
-    except httpx.HTTPStatusError as e:
-        typer.echo(
-            typer.style(f"Error: Service returned {e.response.status_code}", fg=typer.colors.RED),
-            err=True,
-        )
-        raise typer.Exit(code=1)
+    typer.echo(typer.style("\n=== Log Analysis ===\n", fg=typer.colors.CYAN, bold=True))
+    typer.echo(f"Severity:  {typer.style(severity, fg=_severity_color(severity), bold=True)}")
+    typer.echo(f"Summary:   {summary}")
+    if action:
+        typer.echo(f"Action:    {action}")
 
-@app.command()
-def get_incidents():
-    '''
-        Fetches any incidents that occur.
-    '''
+
+# 🧠 NEW: call FastAPI brain (Groq inside)
+def call_brain_api(logs: str) -> dict:
     try:
         with httpx.Client(timeout=20) as client:
-            r = client.get(f"{JAVA_SYSTEM_URL}/incidents",
-            headers={"X-Api-Key": API_KEY}
+            r = client.post(
+                "http://127.0.0.1:8000/analyze",
+                json={"logs": logs},
             )
             r.raise_for_status()
-            typer.echo(f"Status: {r.status_code}")
-            incidents = r.json()
+            return r.json()
+    except Exception as e:
+        return {
+            "severity": "UNKNOWN",
+            "summary": f"Fallback API failed: {e}",
+            "recommendedAction": "Check FastAPI brain service",
+            "analysisValid": False,
+        }
 
-        if not incidents:
-            typer.echo("Couldn't find any incidents.")
-            raise typer.Exit()
 
-        typer.echo(f"{incidents}")
-
-    except httpx.ConnectError:
-        typer.echo(
-            typer.style("Error: Could not connect to ArchAngel service. Is it running?", fg=typer.colors.RED),
-            err=True,
-        )
-        raise typer.Exit(code=1)
-    except httpx.HTTPStatusError as e:
-        typer.echo(
-            typer.style(f"Error: Service returned {e.response.status_code}", fg=typer.colors.RED),
-            err=True,
-        )
-        raise typer.Exit(code=1)
-
-def thinking_spinner(stop_event):
-    for dots in itertools.cycle([".", "..", "..."]):
-        if stop_event.is_set():
-            break
-        print(f"\rThinking{dots}   ", end="", flush=True)
-        time.sleep(0.4)
-    print("\r" + " " * 20 + "\r", end="", flush=True)
-
-def chat_with_ollama(prompt: str, model=model) -> str:
-    stop_event = threading.Event()
-    spinner = threading.Thread(target=thinking_spinner, args=(stop_event,))
-    spinner.start()
-
-    stream = chat(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-        stream=True
-    )
-    full_response = ""
-    for chunk in stream:
-        full_response += chunk['message']['content']
-
-    stop_event.set()
-    spinner.join()
-
-    for char in full_response:
-        print(char, end="", flush=True)
-        time.sleep(0.01)
-    print()
-
-    return full_response
+# ── Commands ───────────────────────────────────────────────────
 
 @app.command()
 def summary():
-    '''
-    Shows you the summary of the problems that occured in you setup, their severity and what you should do to deal with them
-    '''
+    """
+    CLI → Java → Python brain (Groq)
+    Fallback: direct FastAPI call (NO OLLAMA)
+    """
+    try:
+        typer.echo("Collecting and analyzing system logs...")
+
+        with httpx.Client(timeout=60) as client:
+            r = client.post(
+                f"{JAVA_SYSTEM_URL}/analyze",
+                headers=_auth_headers(),
+            )
+            r.raise_for_status()
+            analysis = r.json()
+
+    except Exception:
+        typer.echo(
+            typer.style("Error: Java service not reachable", fg=typer.colors.RED),
+            err=True,
+        )
+        raise typer.Exit(code=1)
+
+    _print_analysis(analysis)
+
+    if analysis.get("analysisValid", False):
+        raise typer.Exit()
+
+    # 🔥 NEW FALLBACK (NO OLLAMA)
+    typer.echo(
+        typer.style(
+            "\nFalling back to direct brain API (Groq)...",
+            fg=typer.colors.YELLOW,
+        )
+    )
+
     try:
         with httpx.Client(timeout=10) as client:
             r = client.post(
                 f"{JAVA_SYSTEM_URL}/execute",
-                content="journalctl -n 50", 
-                headers={"Content-Type": "text/plain", "X-Api-Key": API_KEY}
+                content="journalctl -p 3..5 -n 50 --no-pager --output=short-iso",
+                headers={"Content-Type": "text/plain", **_auth_headers()},
             )
             r.raise_for_status()
             system_data = r.json()
 
-        
         logs = system_data.get("stdout", "")
-        hostname = system_data.get("hostname", "unknown") 
-        timestamp = system_data.get("timestamp", "")
-
-        if not logs:
-            typer.echo("No logs retrieved.")
+        if not logs.strip():
+            typer.echo("No logs found.")
             raise typer.Exit()
 
-        prompt = f"""
-You are a Linux system assistant mainly for arch linux and related systems. Analyze the following logs and provide:
-- Severity of specific logs(LOW/MEDIUM/HIGH/CRITICAL)
-- Summary of what went wrong
-- Recommended action
+        typer.echo("Analyzing via Groq...")
 
-Hostname: {hostname}
-Timestamp: {timestamp}
-Logs:
-{logs}
-        """
+        result = call_brain_api(logs)
+        _print_analysis(result)
 
-        typer.echo("Analyzing logs...")
-        ai_response = chat_with_ollama(prompt)
-
-        typer.echo(typer.style("\n=== Recommended Action ===\n", fg=typer.colors.CYAN, bold=True))
-        typer.echo(ai_response)
-
-    except httpx.ConnectError:
+    except Exception as e:
         typer.echo(
-            typer.style("Error: Could not connect to ArchAngel service. Is it running?", fg=typer.colors.RED),
+            typer.style(f"Fallback failed: {e}", fg=typer.colors.RED),
             err=True,
         )
         raise typer.Exit(code=1)
-    except httpx.HTTPStatusError as e:
-        typer.echo(
-            typer.style(f"Error: Service returned {e.response.status_code}", fg=typer.colors.RED),
-            err=True,
-        )
-        raise typer.Exit(code=1)
+
+
+# ── HEALTH ───────────────────────────────────────────────────
 
 @app.command()
-def config_scan():
-    '''
-    Scans your Hyprland config files for any problems via the ArchAngel brain service.
-    '''
-    env = questionary.select(
-        "Do you use Hyprland?",
-        choices=["Yes", "No"]
-    ).ask()
-
-    if env != "Yes":
-        typer.echo("Only Hyprland config scanning is supported right now.")
-        raise typer.Exit()
-
-    typer.echo("Checking system logs for problems first...")
-
-    try:
-        with httpx.Client(timeout=60) as client:
-            r = client.post(
-                f"{JAVA_SYSTEM_URL}/analyze",
-                headers={"X-Api-Key": API_KEY}
-            )
-
-            # No logs available
-            if r.status_code == 204:
-                typer.echo("No logs available to analyze. Skipping config scan.")
-                raise typer.Exit()
-
-            r.raise_for_status()
-            analysis = r.json()
-
-        # Check if the brain flagged any problems
-        analysis_text = analysis.get("content", "").lower()
-        if not analysis_text or "no problems" in analysis_text or "no issues" in analysis_text:
-            typer.echo(
-                typer.style("✔ No problems detected in system logs. Config scan skipped.", fg=typer.colors.GREEN)
-            )
-            raise typer.Exit()
-
-        typer.echo(
-            typer.style("⚠ Problems detected in logs. Scanning Hyprland config files...", fg=typer.colors.YELLOW)
-        )
-        typer.echo(f"\nLog analysis summary:\n{analysis.get('content')}\n")
-
-    except httpx.ConnectError:
-        typer.echo(
-            typer.style("Error: Could not connect to ArchAngel service. Is it running?", fg=typer.colors.RED),
-            err=True,
-        )
-        raise typer.Exit(code=1)
-    except httpx.HTTPStatusError as e:
-        typer.echo(
-            typer.style(f"Error: Service returned {e.response.status_code}", fg=typer.colors.RED),
-            err=True,
-        )
-        raise typer.Exit(code=1)
-
-    # Only reached if problems were found in logs
-    hypr_path = os.path.expanduser("~/.config/hypr")
-    found_any = False
-
-    for root, dirs, files in os.walk(hypr_path):
-        for file in files:
-            filepath = os.path.join(root, file)
-
-            try:
-                with open(filepath, "r") as f:
-                    content = f.read()
-            except (OSError, UnicodeDecodeError) as e:
-                typer.echo(typer.style(f"Skipping {file}: {e}", fg=typer.colors.YELLOW))
-                continue
-
-            try:
-                with httpx.Client(timeout=120) as client:
-                    r = client.post(
-                        f"{JAVA_SYSTEM_URL}/analyze-config",
-                        content=content,
-                        headers={
-                            "X-Api-Key": API_KEY,
-                            "Content-Type": "text/plain"
-                        }
-                    )
-                    r.raise_for_status()
-                    result = r.json()
-                    result_text = result.get("content", "")
-
-                    # Only print files that actually have problems
-                    if "no problems" in result_text.lower() or "no such problems" in result_text.lower():
-                        continue
-
-                    found_any = True
-                    typer.echo(
-                        typer.style(f"\n=== {file} ===\n", fg=typer.colors.CYAN, bold=True)
-                    )
-                    typer.echo(result_text)
-
-            except httpx.HTTPStatusError as e:
-                typer.echo(
-                    typer.style(f"Error processing {file}: {e.response.status_code}", fg=typer.colors.RED),
-                    err=True,
-                )
-
-    if not found_any:
-        typer.echo(
-            typer.style("\n✔ No config issues found across all Hyprland files.", fg=typer.colors.GREEN)
-        )
+def health():
+    typer.echo("CLI is alive. If AI fails, it's your backend, not me.")
 
 
 if __name__ == "__main__":
