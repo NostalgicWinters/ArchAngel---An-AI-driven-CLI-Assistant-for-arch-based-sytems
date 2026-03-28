@@ -3,4 +3,8 @@ __pycache__/
 *.pyc
 *.log
 .gitignore
-#venv/
+venv/
+
+pkg/
+src/
+*.tar.gz
