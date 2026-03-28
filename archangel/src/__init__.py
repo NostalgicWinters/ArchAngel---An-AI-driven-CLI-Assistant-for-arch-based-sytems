@@ -177,14 +177,18 @@ def get_incidents():
         raise typer.Exit(code=1)
 
 def thinking_spinner(stop_event):
-    for dots in itertools.cycle([".", "..", "..."]):
-        if stop_event.is_set():
-            break
-        print(f"\rThinking{dots}   ", end="", flush=True)
-        time.sleep(0.4)
-    print("\r" + " " * 20 + "\r", end="", flush=True)
+    """
+    Prints a simple thinking indicator without overwriting stdout.
+    """
+    while not stop_event.is_set():
+        print("Thinking...", flush=True)
+        time.sleep(0.8)
+
 
 def chat_with_ollama(prompt: str, model=model) -> str:
+    """
+    Streams response from Ollama with live typing effect.
+    """
     stop_event = threading.Event()
     spinner = threading.Thread(target=thinking_spinner, args=(stop_event,))
     spinner.start()
@@ -194,18 +198,28 @@ def chat_with_ollama(prompt: str, model=model) -> str:
         messages=[{"role": "user", "content": prompt}],
         stream=True
     )
+
     full_response = ""
+    first_token = True
+
     for chunk in stream:
-        full_response += chunk['message']['content']
+        content = chunk['message']['content']
+        full_response += content
 
-    stop_event.set()
-    spinner.join()
+        # Stop spinner when first token arrives
+        if first_token:
+            stop_event.set()
+            spinner.join()
+            first_token = False
+            print()  # separate spinner from output
 
-    for char in full_response:
-        print(char, end="", flush=True)
-        time.sleep(0.01)
-    print()
+        # Live typing effect
+        for char in content:
+            print(char, end="", flush=True)
+            if char != " ":
+                time.sleep(0.003)
 
+    print()  # final newline
     return full_response
 
 @app.command()
@@ -247,8 +261,6 @@ Logs:
         typer.echo("Analyzing logs...")
         ai_response = chat_with_ollama(prompt)
 
-        typer.echo(typer.style("\n=== Recommended Action ===\n", fg=typer.colors.CYAN, bold=True))
-        typer.echo(ai_response)
 
     except httpx.ConnectError:
         typer.echo(
