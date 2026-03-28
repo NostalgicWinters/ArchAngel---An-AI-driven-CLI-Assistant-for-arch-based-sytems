@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 .env
 __pycache__/
 *.pyc
@@ -8,3 +9,23 @@ venv/
 pkg/
 src/
 *.tar.gz
+=======
+# Java
+target/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+
+# Logs
+*.log
+archangel-orchestrator/logs/
+
+# Database
+*.db
+*.mv.db
+
+# Env
+.env
+>>>>>>> 3b26cad (Remove logs and db files from repo)
