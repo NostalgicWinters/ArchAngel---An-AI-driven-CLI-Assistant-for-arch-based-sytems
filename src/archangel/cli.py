@@ -228,6 +228,93 @@ def chat_with_ollama(prompt: str, model=model) -> str:
     return full_response
 
 @app.command()
+def update():
+    '''Updates our system'''
+    script = '''
+    !/usr/bin/env bash
+set -e
+echo "🍽️ Feeding the system..."
+# -------------------------------
+# Helper functions
+# -------------------------------
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+run_safe() {
+    echo "→ $1"
+    bash -c "$1" || echo "⚠️ Failed: $1"
+}
+# -------------------------------
+# Detect and update system packages
+# -------------------------------
+if command_exists pacman; then
+    echo "[*] Detected Arch-based system"
+    run_safe "sudo pacman -Syu --noconfirm"
+    if command_exists yay; then
+        run_safe "yay -Sua --noconfirm"
+    elif command_exists paru; then
+        run_safe "paru -Sua --noconfirm"
+    fi
+elif command_exists apt; then
+    echo "[*] Detected Debian/Ubuntu"
+    run_safe "sudo apt update"
+    run_safe "sudo apt upgrade -y"
+    run_safe "sudo apt autoremove -y"
+elif command_exists dnf; then
+    echo "[*] Detected Fedora/RHEL"
+    run_safe "sudo dnf upgrade -y"
+elif command_exists zypper; then
+    echo "[*] Detected openSUSE"
+    run_safe "sudo zypper refresh"
+    run_safe "sudo zypper update -y"
+else
+    echo "⚠️ Unknown package manager. Skipping system update."
+fi
+# -------------------------------
+# Flatpak
+# -------------------------------
+if command_exists flatpak; then
+    run_safe "flatpak update -y"
+fi
+# -------------------------------
+# Snap
+# -------------------------------
+if command_exists snap; then
+    run_safe "sudo snap refresh"
+fi
+# -------------------------------
+# npm (safe: user-level only)
+# -------------------------------
+if command_exists npm; then
+    run_safe "npm update -g"
+fi
+# -------------------------------
+# pipx (safe Python global tools)
+# -------------------------------
+if command_exists pipx; then
+    run_safe "pipx upgrade-all"
+fi
+# -------------------------------
+# Rust (cargo)
+# -------------------------------
+if command_exists cargo && command_exists cargo-install-update; then
+    run_safe "cargo install-update -a"
+fi
+# -------------------------------
+# Cleanup (only where applicable)
+# -------------------------------
+if command_exists pacman; then
+    run_safe "sudo rm -rf /var/cache/pacman/pkg/download-*"
+    run_safe "sudo pacman -Sc --noconfirm"
+elif command_exists apt; then
+    run_safe "sudo apt clean"
+fi
+echo "✅ System fed successfully."
+'''
+    os.system(script)
+
+
+@app.command()
 def summary():
     '''
     Shows you the summary of the problems that occured in you setup, their severity and what you should do to deal with them
