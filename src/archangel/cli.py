@@ -15,7 +15,7 @@ app = typer.Typer(
 
 JAVA_RSS_URL = "http://127.0.0.1:9090/news"
 JAVA_SYSTEM_URL = "http://127.0.0.1:9090/system"
-model = "qwen3.5:9b"
+model = "qwen2.5:3b"
 API_KEY = os.getenv("ARCHANGEL_API_KEY", "dev-secret-key")
 __version__ = "0.1.0"
 
