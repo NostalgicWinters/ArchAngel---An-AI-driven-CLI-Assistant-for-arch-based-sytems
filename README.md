@@ -63,12 +63,32 @@ Each component is lightweight, isolated, and communicates over local REST APIs.
      Ollama (Llama-3)              Arch News RSS
 ```
 
+## Installation Instruction
+### The CLI Tool
+```
+git clone https://github.com/Kernal-Penguins/Archangel-aur.git
+cd Archangel-aur
+makepkg -si
+```
+
+### The daemon service
+```
+git clone https://github.com/Kernal-Penguins/ArchAngel.git
+chmod +x install-service.sh
+./install-service.sh
+
+```
+### Dependent model
+Install the qwen2.5:3b model from https://ollama.com/library/qwen2.5
+
+---
+
  ## Components
 ### The Brain (Python)
 
 Framework: FastAPI
 
-LLM Backend: Ollama (Llama-3-8B)
+LLM Backend: Ollama qwen2.5:3b
 
 Responsibilities:
 
