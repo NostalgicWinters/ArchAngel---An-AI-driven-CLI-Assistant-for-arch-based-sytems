@@ -1,6 +1,8 @@
 # ArchAngel--A-Unified-AI-Driven-Linux-System-Assistant-for-Arch-Based-Systems
 
-<img src="ArchAngel.png" width=400> </img>
+<div align="center">
+  <img src="ArchAngel.png" width="400">
+</div>
 
 ## ArchAngel 
 
