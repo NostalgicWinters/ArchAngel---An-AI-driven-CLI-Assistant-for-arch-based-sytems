@@ -1,5 +1,7 @@
 # ArchAngel--A-Unified-AI-Driven-Linux-System-Assistant-for-Arch-Based-Systems
 
+<img src="ArchAngel.png"> </img>
+
 ## ArchAngel 
 
 A Unified AI-Driven Linux System Assistant for Arch-Based Systems
