@@ -28,4 +28,6 @@ archangel-orchestrator/logs/
 
 # Env
 .env
+.vscode
+.quarkus/cli/plugins
 >>>>>>> 3b26cad (Remove logs and db files from repo)
