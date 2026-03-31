@@ -91,7 +91,7 @@ Analyzing recent journal entries...
 
 ---
 
-<div align="center">
+<div align="left">
 
 ## 💻️ Video Demo
 
