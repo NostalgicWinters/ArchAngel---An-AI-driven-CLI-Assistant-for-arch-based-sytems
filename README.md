@@ -91,12 +91,18 @@ Analyzing recent journal entries...
 
 ---
 
-## 💻️ Video Demo
-<div align="center>
-![Demo](Demo.gif)
+<div align="center">
 
-[▶️ Full Video](Demo.mp4)
+## 💻️ Video Demo
+
+<img src="Demo.gif" width="600"/>
+
+<br><br>
+
+<a href="Demo.mp4">▶️ Full Video</a>
+
 </div>
+
 ## 🏗️ Architecture
 
 ArchAngel follows a **Multi-Agent System** design. Each component is lightweight, isolated, and communicates over clearly defined interfaces.
