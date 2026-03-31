@@ -1,0 +1,31 @@
+<<<<<<< HEAD
+.env
+__pycache__/
+*.pyc
+*.log
+venv/
+
+pkg/
+*.tar.gz
+=======
+# Java
+target/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+
+# Logs
+*.log
+archangel-orchestrator/logs/
+
+# Database
+*.db
+*.mv.db
+
+# Env
+.env
+.vscode
+.quarkus/cli/plugins
+>>>>>>> 3b26cad (Remove logs and db files from repo)
