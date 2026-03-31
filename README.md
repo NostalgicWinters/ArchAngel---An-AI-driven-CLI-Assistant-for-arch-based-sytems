@@ -92,8 +92,9 @@ Analyzing recent journal entries...
 ---
 
 ## 💻️ Video Demo
+![Demo](Demo.gif)
 
-[▶️ Watch Demo](./Demo.mp4)
+[▶️ Full Video](Demo.mp4)
 
 ## 🏗️ Architecture
 
