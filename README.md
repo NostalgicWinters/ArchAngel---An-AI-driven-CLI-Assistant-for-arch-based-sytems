@@ -3,6 +3,7 @@
 <div align="center">
   <img src="ArchAngel.png" width="400">
 </div>
+---
 
 ## ArchAngel 
 
@@ -47,6 +48,11 @@ Recommendation: delay update or pin version.”
 
 This proactive behavior is the project’s key innovation.
 
+---
+## Video Showcase
+
+
+---
 ## Architecture Overview
 
 ArchAngel follows a Multi-Agent System design.
